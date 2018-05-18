@@ -1,0 +1,38 @@
+0-7: 137 80 78 71 13 10 26 10
+12-15: IHDR - 73/72/68/82: debe ser la primera sección, contiene la cabecera.
+   Width:              4 byte: 0 0 0 20
+   Height:             4 byte: 0 0 0 20
+   Bit depth:          1 byte: 8
+   Color type:         1 byte: 6
+   Compression method: 1 byte: 0
+   Filter method:      1 byte: 0
+	0       None
+   	1       Sub
+   	2       Up
+   	3       Average
+   	4       Paeth
+   Interlace method:   1 byte: 0
+37-40: sRGB - 115/82/71/66: indica que se usa el estándar sRBG color space.
+   0: Perceptual
+   1: Relative colorimetric
+   2: Saturation
+   3: Absolute colorimetric
+50-53: gAMA - 103/65/77/65: específica la gamma.
+66-69: pHYs - 112/72/89/115: contiene el tamaño previsto del píxel y/o el ratio de la imagen.
+   Pixels per unit, X axis: 4 bytes (unsigned integer)
+   Pixels per unit, Y axis: 4 bytes (unsigned integer)
+   Unit specifier:          1 byte
+   	0: unit is unknown
+   	1: unit is the meter
+87-90: IDAT - 73/68/65/84: contiene la imagen que debe ser dividida en múltiples secciones IDAT.
+   Compression method/flags code: 1 byte
+   Additional flags/check bits:   1 byte
+   Compressed data blocks:        n bytes
+   Check value:                   4 bytes
+152-155: IEND - 73/69/78/68: marca el final de la imagen.
+
+Chunk Layout
+(1) 4 byte: largo de N bytes data chunk. (N puede ser 0).
+(2) 4 byte: tipo chunk letras ASCII (A-Z (65-90) y a-z (97-122)).
+(3) N byte: data chunk. (Puede tener largo 0).
+(4) 4 byte: CRC (incluye 2 y 3).
