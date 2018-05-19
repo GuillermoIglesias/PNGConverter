@@ -1,98 +1,56 @@
-# PNG Compressor
 import zlib
+import struct
 
-# Calcular CRC en cada chunk
-def checksum (tag, data):
-    checksum = zlib.crc32(tag)
-    checksum = zlib.crc32(data, checksum)
-    checksum &= 0xFFFFFFFF
-    checksum = checksum.to_bytes(4,byteorder='big')
-    return checksum
+def grayscalePNG(data, height=None, width=None):
+    def B1(value):
+        return struct.pack("!B", value & (2**8-1))
+    def B4(value):
+        return struct.pack("!I", value & (2**32-1))
 
-# Abrir archivo imagen source
-bitmap = open("input.bmp","rb").read()
+    if height is None:
+        height = len(data)
+    if width is None:
+        width = 0
+        for row in data:
+            if width < len(row):
+                width = len(row)    
 
-# Datos imagen
-raw_data = bitmap[sum(bitmap[10:13]):]
+    # Firma Header PNG
+    png = b"\x89" + "PNG\r\n\x1A\n".encode('ascii')
 
-# Anchura y altura (pixel)
-x = sum(bitmap[18:21])
-y = sum(bitmap[22:25])
+    # Chunk: IHDR
+    colortype = 0 # Escala de grises
+    bitdepth = 8 # Un byte por pixel (0-255)
+    compression = 0 # Función zlib (default)
+    filtertype = 0 # Adaptivo 
+    interlaced = 0 # No
+    IHDR = B4(width) + B4(height) + B1(bitdepth)
+    IHDR += B1(colortype) + B1(compression)
+    IHDR += B1(filtertype) + B1(interlaced)
+    block = "IHDR".encode('ascii') + IHDR
+    png += B4(len(IHDR)) + block + B4(zlib.crc32(block))
 
-compressed_data = zlib.compress(raw_data, zlib.Z_BEST_COMPRESSION)
-# compress = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED)  
-# compressed_data = compress.compress(raw_data)  
-# compressed_data += compress.flush()
-# compress_ratio = (float(len(raw_data)) - float(len(compressed_data))) / float(len(raw_data))
+    # Chunk: IDAT
+    raw = b""
+    for y in range(height):
+        raw += b"\0" # Sin filtro
+        for x in range(width):
+            c = b"\0" # Pixel negro por defecto
+            if y < len(data) and x < len(data[y]):
+                c = B1(data[y][x])
+            raw += c
+    compressor = zlib.compressobj()
+    compressed = compressor.compress(raw)
+    compressed += compressor.flush() 
+    block = "IDAT".encode('ascii') + compressed
+    png += B4(len(compressed)) + block + B4(zlib.crc32(block))
 
-# print (raw_data)
-# print (compressed_data)
-# print ('Compressed: %d%%' % (100.0 * compress_ratio))  
+    # Chunk: IEND
+    block = "IEND".encode('ascii')
+    png += B4(0) + block + B4(zlib.crc32(block))
 
-# PNG firma de archivo
-bmp_file = bytearray([137,80,78,71,13,10,26,10])
-
-# Chunk: IHDR
-bmp_file.extend([0,0,0,13]) # Largo Chunk
-tag = bytearray([73,72,68,82]) # IHDR
-bmp_file.extend(tag) 
-chunk_data = bytearray([0,0,0,x,0,0,0,y,8,6,0,0,0]) # Datos 13 bytes.
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-# Chunk: sRGB
-bmp_file.extend([0,0,0,1]) # Largo Chunk
-tag = bytearray([115,82,71,66]) # sRGB
-bmp_file.extend(tag) 
-chunk_data = bytearray([0]) # 0: Perceptual
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-# Chunk: gAMA
-bmp_file.extend([0,0,0,4]) # Largo Chunk
-tag = bytearray([103,65,77,65]) # gAMA
-bmp_file.extend(tag) 
-chunk_data = bytearray([0,0,177,143]) # 0: Perceptual
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-# Chunk: pHYs
-bmp_file.extend([0,0,0,9]) # Largo Chunk
-tag = bytearray([112,72,89,115]) # pHYs
-bmp_file.extend(tag) 
-chunk_data = bytearray([0,0,14,195,0,0,14,195,1]) # Data chunk
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-# Chunk: IDAT
-bmp_file.extend([0,0,0,len(compressed_data)]) # Largo Chunk
-tag = bytearray([73,68,65,84]) # IDAT
-bmp_file.extend(tag) 
-chunk_data = compressed_data # Datos imagen comprimida.
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-# Chunk: IEND
-bmp_file.extend([0,0,0,0]) # Largo Chunk
-tag = bytearray([73,69,78,68]) # IEND
-bmp_file.extend(tag) 
-chunk_data = bytearray([]) # No datos
-bmp_file.extend(chunk_data) 
-crc = checksum(bytes(tag),bytes(chunk_data)) # CRC
-bmp_file.extend([crc[0],crc[1],crc[2],crc[3]]) 
-
-bmp_file = bytes(bmp_file)
-
-print (bmp_file)
-
-# for i in range(len(bmp_file)):
-#     print (bmp_file[i])
+    return png
 
 f = open('output.png','wb')
-f.write(bmp_file)  
+f.write(grayscalePNG([[0,255,0],[255,255,255],[0,255,0]]))  
 f.close()
