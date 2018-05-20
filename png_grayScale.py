@@ -2,17 +2,25 @@ import zlib
 import struct
 import sys
 
-def convertToPNG(data, width , height):
+def convertToPNG(data, height=None, width=None):
     def B1(value):
         return struct.pack("!B", value & (2**8-1))
     def B4(value):
         return struct.pack("!I", value & (2**32-1))
 
+    if height is None:
+        height = len(data)
+    if width is None:
+        width = 0
+        for row in data:
+            if width < len(row):
+                width = len(row)    
+
     # Firma Header PNG
     png = b"\x89" + "PNG\r\n\x1A\n".encode('ascii')
 
     # Chunk: IHDR
-    colortype = 2 # RGB 
+    colortype = 0 # Escala de grises
     bitdepth = 8 # Un byte por pixel (0-255)
     compression = 0 # Función zlib (default)
     filtertype = 0 # Adaptivo 
@@ -25,12 +33,12 @@ def convertToPNG(data, width , height):
 
     # Chunk: IDAT
     raw = b""
-    for i in range(height):
+    for y in range(height):
         raw += b"\0" # Sin filtro
-        for j in range(width*3):
+        for x in range(width):
             c = b"\0" # Pixel negro por defecto
-            if i < len(data) and j < len(data[i]):
-                c = B1(data[i][j])
+            if y < len(data) and x < len(data[y]):
+                c = B1(data[y][x])
             raw += c
     compressor = zlib.compressobj()
     compressed = compressor.compress(raw)
@@ -60,19 +68,20 @@ def imageSource(source):
     for i in range(y):
         pos = i * (x * 3 + pad)
         for j in range(0, x * 3, 3):
-            image[i].append(raw[pos + j + 2]) # B
-            image[i].append(raw[pos + j + 1]) # G
-            image[i].append(raw[pos + j]) # R
-            
-    return image[::-1], x, y
+            R = raw[pos + j]
+            G = raw[pos + j + 1]
+            B = raw[pos + j + 2]
+            rgbToGray = (0.2125 * R) + (0.7154 * G) + (0.0721 * B)
+            image[i].append(int(rgbToGray))
+    
+    return image[::-1]
 
 def main():
     if (len(sys.argv) == 1):
         return print('Error: python png.py <archivo.bmp>')
 
-    bitmap_data, x, y = imageSource(sys.argv[1])
-    print(bitmap_data)
-    png_data = convertToPNG(bitmap_data, x, y)
+    bitmap_data = imageSource(sys.argv[1])
+    png_data = convertToPNG(bitmap_data)
 
     output = open('output.png','wb')
     output.write(png_data)  
