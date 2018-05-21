@@ -12,7 +12,7 @@ def main():
 
     png_data = convertToPNG(bmp_data)
 
-    output = open('output/' + input_name + '_.png','wb')
+    output = open(input_name + '_.png','wb')
     output.write(png_data)  
     output.close()
 
