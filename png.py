@@ -2,7 +2,24 @@ import zlib
 import struct
 import sys
 
-def convertToPNG(data, width , height):
+def main():
+    if (len(sys.argv) == 1):
+        return print('Error: python png.py <archivo.bmp>')
+
+    input_name = (sys.argv[1][:-4])
+
+    bmp_data = open(sys.argv[1], "rb").read()
+
+    png_data = convertToPNG(bmp_data)
+
+    output = open('output/' + input_name + '_.png','wb')
+    output.write(png_data)  
+    output.close()
+
+def convertToPNG(source):
+    # Extraer data desde fuente
+    data, width, height = imageSource(source)
+
     def B1(value):
         return struct.pack("!B", value & (2**8-1))
     def B4(value):
@@ -44,13 +61,12 @@ def convertToPNG(data, width , height):
 
     return png
 
-def imageSource(source):
-    data = open(source,"rb").read()
+def imageSource(raw):
 
-    x = sum(data[18:22])
-    y = sum(data[22:26])
-    d = sum(data[10:14])
-    raw = data[d:] 
+    x = sum(raw[18:22])
+    y = sum(raw[22:26])
+    d = sum(raw[10:14])
+    data = raw[d:] 
 
     image = [[] for i in range(y)] 
     pad = 0
@@ -60,23 +76,11 @@ def imageSource(source):
     for i in range(y):
         pos = i * (x * 3 + pad)
         for j in range(0, x * 3, 3):
-            image[i].append(raw[pos + j + 2]) # B
-            image[i].append(raw[pos + j + 1]) # G
-            image[i].append(raw[pos + j]) # R
+            image[i].append(data[pos + j + 2]) # B
+            image[i].append(data[pos + j + 1]) # G
+            image[i].append(data[pos + j]) # R
             
-    return image[::-1], x, y
-
-def main():
-    if (len(sys.argv) == 1):
-        return print('Error: python png.py <archivo.bmp>')
-
-    bitmap_data, x, y = imageSource(sys.argv[1])
-    print(bitmap_data)
-    png_data = convertToPNG(bitmap_data, x, y)
-
-    output = open('output.png','wb')
-    output.write(png_data)  
-    output.close()
+    return image[::-1], x , y
 
 if __name__ == '__main__':
     main()
