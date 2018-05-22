@@ -31,7 +31,7 @@ def convertToPNG(source):
     # Chunk: IHDR
     colortype = 2 # RGB 
     bitdepth = 8 # Un byte por pixel (0-255)
-    compression = 0 # Función zlib (default)
+    compression = 0 # Funcion zlib (Deflate)
     filtertype = 0 # Adaptivo 
     interlaced = 0 # No
     IHDR = B4(width) + B4(height) + B1(bitdepth)
